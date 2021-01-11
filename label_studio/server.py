@@ -10,7 +10,7 @@ try:
 except:
     # boxing is broken for Python3.5
     boxing = lambda x, **kwargs: x
-    
+
 from label_studio.utils.misc import get_latest_version, current_version_is_outdated
 
 _HERE = pathlib.Path(__file__).resolve()

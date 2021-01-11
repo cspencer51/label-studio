@@ -200,7 +200,7 @@ class TasksJSONStorage(JSONStorage):
 class ExternalTasksJSONStorage(CloudStorage):
 
     form = BaseForm
-    description = 'Local [loading tasks from "tasks.json" file]'
+    description = 'Cloud [loading tasks from "tasks.json" file]'
 
     def __init__(self, name, path, project_path, prefix=None, create_local_copy=False, regex='.*', **kwargs):
         super(ExternalTasksJSONStorage, self).__init__(

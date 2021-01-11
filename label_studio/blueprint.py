@@ -75,7 +75,7 @@ def config_from_file():
     try:
         config_file = INPUT_ARGUMENTS_PATH.open(encoding='utf8')
     except OSError:
-        raise LabelStudioError("Can't open input_args file: " + str(INPUT_ARGUMENTS_PATH) + ", " 
+        raise LabelStudioError("Can't open input_args file: " + str(INPUT_ARGUMENTS_PATH) + ", "
                                "use set_input_arguments_path() to setup it")
 
     with config_file:
@@ -734,7 +734,6 @@ def api_tasks_completions(task_id):
     # save completion
     if request.method == 'POST':
         completion = request.json
-
         # cancelled completion
         was_cancelled = request.values.get('was_cancelled', False)
         if was_cancelled:

@@ -585,7 +585,6 @@ class Project(object):
         """
         # try to get completions with task first
         task = self.get_task_with_completions(task_id)
-
         # init task if completions with task not exists
         if not task:
             task = deepcopy(self.source_storage.get(task_id))
