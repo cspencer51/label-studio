@@ -134,11 +134,11 @@ class Project(object):
 
     @classmethod
     def get_available_source_storages(cls):
-        return ['tasks-json', 's3', 'gcs']
+        return ['tasks-json', 's3', 'gcs', 'sqlite3']
 
     @classmethod
     def get_available_target_storages(cls):
-        return ['completions-dir', 's3-completions', 'gcs-completions']
+        return ['completions-dir', 's3-completions', 'gcs-completions', 'sqlite3-completions']
 
     def get_available_source_storage_names(self):
         names = OrderedDict()
