@@ -28,22 +28,22 @@ class Sqlite3Storage(BaseStorage):
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute('''SELECT data FROM tasks WHERE id=?''', (id,))
+        c.execute('''SELECT data, posting_id FROM tasks WHERE id=?''', (id,))
         ret = c.fetchone()
-        data = {"id": id, "data": {"text": ret[0]}}
         conn.close()
 
         if ret is None:
             return ret
         else:
-            data = {"id": id, "data": {"text": ret[0]}}
-            return data
+            data = {"id": id, "data": {"text": ret[0], "posting_id": ret[1]}}
+
+        return data
 
     def set(self, id, value):
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute('''UPDATE tasks SET data=? WHERE id=?''', (value, id,))
+        c.execute('''INSERT INTO tasks (id, data, posting_id) VALUES (?,?,?)''', (id, value['text'], value['posting_id']))
         conn.commit()
         conn.close()
 
@@ -56,13 +56,14 @@ class Sqlite3Storage(BaseStorage):
         conn.close()
         return ret
 
+    # used by upload API
     def set_many(self, ids, values):
         conn = sqlite3.connect(self.path)
         c = conn.cursor()
 
-        data = [(i, v['data']['text']) for i, v in zip(ids, values)]
-        c.executemany('''INSERT OR REPLACE INTO tasks (id, data)
-            values (?,?)''', data)
+        data = [(i, v['data']['text'], v['data']['posting_id']) for i, v in zip(ids, values)]
+        c.executemany('''INSERT OR REPLACE INTO tasks (id, data, posting_id)
+            values (?,?,?)''', data)
 
         conn.commit()
         conn.close()
@@ -82,8 +83,8 @@ class Sqlite3Storage(BaseStorage):
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute('''SELECT id, data FROM tasks''')
-        data = {x[0]: {'id': x[0], 'data': {'text': x[1]}} for x in c.fetchall()}
+        c.execute('''SELECT id, data, posting_id FROM tasks''')
+        data = {x[0]: {'id': x[0], 'data': {'text': x[1], 'posting_id': x[2]}} for x in c.fetchall()}
         conn.close()
         return data.items()
 
@@ -112,7 +113,7 @@ class Sqlite3Storage(BaseStorage):
     def create_table(self):
         conn = sqlite3.connect(self.path)
         c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS tasks (id integer, data text, PRIMARY KEY (id))''')
+        c.execute('''CREATE TABLE IF NOT EXISTS tasks (id integer, data text, posting_id text, PRIMARY KEY (id))''')
         conn.commit()
         conn.close()
 
@@ -157,7 +158,7 @@ class Sqlite3CompletionsStorage(BaseStorage):
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
         c.execute('''SELECT task_data, completion_id, result_id, lead_time,
-            choice, from_name, to_name, type, created_at FROM completions WHERE task_id=?''', (id,))
+            choice, from_name, to_name, type, created_at, posting_id, was_cancelled FROM completions WHERE task_id=?''', (id,))
         ret = c.fetchone()
         conn.close()
 
@@ -166,8 +167,12 @@ class Sqlite3CompletionsStorage(BaseStorage):
         else:
             data = {
                 "id": id,
-                "data": {"text": ret[0]},
+                "data": {
+                    "text": ret[0],
+                    "posting_id": ret[9]
+                },
                 "completions": [{
+                    "completed_at": ret[8],
                     "lead_time": ret[3],
                     "result": [
                         {
@@ -186,31 +191,69 @@ class Sqlite3CompletionsStorage(BaseStorage):
                 }]
             }
 
+            if ret[10] == "1":
+                data["was_cancelled"] = True
+
             return data
 
     def set(self, id, value):
         task_id = value['id']
         task_data = value['data']['text']
+        posting_id = value['data']['posting_id']
 
-        completions = value['completions'][0]
-        result = completions['result'][0]
-
+        completions = value['completions'][-1]
         lead_time = completions['lead_time']
         completion_id = completions['id']
-        result_id = result['id']
-        choice = result['value']['choices'][0]
-        choice_id = result['type']
-        from_name = result['from_name']
-        to_name = result['to_name']
-        choice_type = result['type']
         created_at = completions['created_at']
+
+        was_cancelled = "1"
+        result_id = ""
+        choice = ""
+        choice_id = ""
+        from_name = ""
+        to_name = ""
+        choice_type = ""
+
+        if "was_cancelled" not in completions:
+            was_cancelled = "0"
+            result = completions['result'][-1]
+
+            result_id = result['id']
+            choice = result['value']['choices'][0]
+            choice_id = result['type']
+            from_name = result['from_name']
+            to_name = result['to_name']
+            choice_type = result['type']
 
         conn = sqlite3.connect(self.path)
         c = conn.cursor()
-        c.execute('''INSERT INTO completions (task_id, task_data, completion_id,
-            result_id, lead_time, choice, choice_id, from_name, to_name, type, created_at)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?)''', (task_id, task_data, completion_id, result_id,
-                lead_time, choice, choice_id, from_name, to_name, choice_type, created_at))
+
+        if self.get(id) is not None:
+            c.execute('''UPDATE completions
+                SET task_data = ?,
+                    result_id = ?,
+                    lead_time = ?,
+                    choice = ?,
+                    choice_id = ?,
+                    from_name = ?,
+                    to_name = ?,
+                    choice_type = ?,
+                    created_at = ?,
+                    posting_id = ?,
+                    was_cancelled = ?,
+                WHERE task_id = ? AND completion_id = ?''',
+                    (task_data, result_id, lead_time, choice, choice_id,
+                     from_name, to_name, choice_type, created_at, posting_id,
+                     was_cancelled, task_id, completion_id))
+        else:
+            c.execute('''INSERT INTO completions (task_id, task_data, completion_id,
+                result_id, lead_time, choice, choice_id, from_name, to_name, type, created_at,
+                posting_id, was_cancelled)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)''',
+                    (task_id, task_data, completion_id, result_id,
+                    lead_time, choice, choice_id, from_name, to_name, choice_type, created_at,
+                    posting_id, was_cancelled))
+
         conn.commit()
         conn.close()
 
@@ -223,13 +266,15 @@ class Sqlite3CompletionsStorage(BaseStorage):
         conn.close()
         return ret
 
+    # used by upload API
     def set_many(self, ids, values):
         conn = sqlite3.connect(self.path)
         c = conn.cursor()
         data = [(i, v['data']['text']) for i, v in zip(ids, values)]
         c.executemany('''INSERT OR REPLACE INTO completions (task_id, task_data, completion_id,
-            result_id, lead_time, choice, choice_id, from_name, to_name, type, created_at)
-            values (?,?,?,?,?,?,?,?,?,?,?)''', data)
+            result_id, lead_time, choice, choice_id, from_name, to_name, type, created_at,
+            posting_id, was_cancelled)
+            values (?,?,?,?,?,?,?,?,?,?,?,?,?)''', data)
 
         conn.commit()
         conn.close()
@@ -260,7 +305,9 @@ class Sqlite3CompletionsStorage(BaseStorage):
                 from_name,
                 to_name,
                 type,
-                created_at
+                created_at,
+                posting_id,
+                was_cancelled
             FROM completions''')
 
         data = {}
@@ -276,6 +323,8 @@ class Sqlite3CompletionsStorage(BaseStorage):
             to_name = x[8]
             choice_type = x[9]
             created_at = x[10]
+            posting_id = x[11]
+            was_cancelled = x[12]
 
             completion = {
                 "lead_time": lead_time,
@@ -296,16 +345,20 @@ class Sqlite3CompletionsStorage(BaseStorage):
                 "created_at": created_at
             }
 
-            if x[0] in data:
+            if was_cancelled == "1":
+                completion["was_cancelled"] = True
+
+            if task_id in data:
                 data[task_id]["completions"].append(completion)
 
             else:
                 data[task_id] = {
                     "id": task_id,
                     "data": {
-                        "text": task_data
+                        "text": task_data,
+                        "posting_id": posting_id
                     },
-                    "completions": [completion]
+                    "completions": [completion],
                 }
 
         conn.close()
@@ -348,6 +401,8 @@ class Sqlite3CompletionsStorage(BaseStorage):
              to_name text,
              type text,
              created_at integer,
+             posting_id text,
+             was_cancelled text,
              PRIMARY KEY (task_id, completion_id, result_id)
             )''')
         conn.commit()
