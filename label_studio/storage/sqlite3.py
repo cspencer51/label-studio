@@ -156,14 +156,36 @@ class Sqlite3CompletionsStorage(BaseStorage):
         conn = sqlite3.connect(self.path)
         conn.row_factory = sqlite3.Row
         c = conn.cursor()
-        c.execute('''SELECT task_data FROM completions WHERE task_id=?''', (id,))
+        c.execute('''SELECT task_data, completion_id, result_id, lead_time,
+            choice, from_name, to_name, type, created_at FROM completions WHERE task_id=?''', (id,))
         ret = c.fetchone()
         conn.close()
 
         if ret is None:
             return ret
         else:
-            data = {"id": id, "data": {"text": ret[0]}}
+            data = {
+                "id": id,
+                "data": {"text": ret[0]},
+                "completions": [{
+                    "lead_time": ret[3],
+                    "result": [
+                        {
+                            "value": {
+                                "choices": [
+                                    ret[4]
+                                ]
+                            },
+                            "id": ret[2],
+                            "from_name": ret[5],
+                            "to_name":ret[6],
+                            "type": ret[7]
+                        }
+                    ],
+                    "id": ret[1]
+                }]
+            }
+
             return data
 
     def set(self, id, value):
@@ -325,7 +347,8 @@ class Sqlite3CompletionsStorage(BaseStorage):
              from_name text,
              to_name text,
              type text,
-             created_at integer
+             created_at integer,
+             PRIMARY KEY (task_id, completion_id, result_id)
             )''')
         conn.commit()
         conn.close()
