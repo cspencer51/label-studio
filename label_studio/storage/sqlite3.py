@@ -95,9 +95,18 @@ class Sqlite3Storage(BaseStorage):
         conn.commit()
         conn.close()
 
-    def remove_all(self):
-        self.drop_table()
-        self.create_table()
+    def remove_all(self, ids=None):
+        if ids is None:
+            self.drop_table()
+            self.create_table()
+        else:
+            conn = sqlite3.connect(self.path)
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            statement = "DELETE FROM tasks WHERE id in ({})".format(",".join(["?" for _ in ids]))
+            c.executemany(statement, [ids])
+            conn.commit()
+            conn.close()
 
     def empty(self):
         conn = sqlite3.connect(self.path)
@@ -370,9 +379,18 @@ class Sqlite3CompletionsStorage(BaseStorage):
         conn.commit()
         conn.close()
 
-    def remove_all(self):
-        self.drop_table()
-        self.create_table()
+    def remove_all(self, ids=None):
+        if ids is None:
+            self.drop_table()
+            self.create_table()
+        else:
+            conn = sqlite3.connect(self.path)
+            conn.row_factory = sqlite3.Row
+            c = conn.cursor()
+            statement = "DELETE FROM completions WHERE task_id in ({})".format(",".join(["?" for _ in ids]))
+            c.executemany(statement, [ids])
+            conn.commit()
+            conn.close()
 
     def empty(self):
         conn = sqlite3.connect(self.path)
