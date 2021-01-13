@@ -172,10 +172,17 @@ class Sqlite3CompletionsStorage(BaseStorage):
                     "posting_id": ret[9]
                 },
                 "completions": [{
-                    "completed_at": ret[8],
-                    "lead_time": ret[3],
-                    "result": [
-                        {
+                      "created_at": ret[8],
+                      "id": ret[1],
+                      "lead_time": ret[3],
+                      "result": []
+                    }]
+            }
+
+            if ret[10] == "1":
+                data["completions"][0]["was_cancelled"] = True
+            else:
+                data["completions"][0]["result"].append({
                             "value": {
                                 "choices": [
                                     ret[4]
@@ -183,16 +190,9 @@ class Sqlite3CompletionsStorage(BaseStorage):
                             },
                             "id": ret[2],
                             "from_name": ret[5],
-                            "to_name":ret[6],
+                            "to_name": ret[6],
                             "type": ret[7]
-                        }
-                    ],
-                    "id": ret[1]
-                }]
-            }
-
-            if ret[10] == "1":
-                data["was_cancelled"] = True
+                        })
 
             return data
 
