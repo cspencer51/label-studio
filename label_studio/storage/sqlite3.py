@@ -205,8 +205,8 @@ class Sqlite3CompletionsStorage(BaseStorage):
         lead_time = completions['lead_time']
         completion_id = completions['id']
         created_at = completions['created_at']
+        was_cancelled = completions.get("was_cancelled", False)
 
-        was_cancelled = "1"
         result_id = ""
         choice = ""
         choice_id = ""
@@ -214,10 +214,9 @@ class Sqlite3CompletionsStorage(BaseStorage):
         to_name = ""
         choice_type = ""
 
-        if "was_cancelled" not in completions:
-            was_cancelled = "0"
-            result = completions['result'][-1]
-
+        result = completions['result']
+        if len(result) >= 1:
+            result = result[-1]
             result_id = result['id']
             choice = result['value']['choices'][0]
             choice_id = result['type']
@@ -237,10 +236,10 @@ class Sqlite3CompletionsStorage(BaseStorage):
                     choice_id = ?,
                     from_name = ?,
                     to_name = ?,
-                    choice_type = ?,
+                    type = ?,
                     created_at = ?,
                     posting_id = ?,
-                    was_cancelled = ?,
+                    was_cancelled = ?
                 WHERE task_id = ? AND completion_id = ?''',
                     (task_data, result_id, lead_time, choice, choice_id,
                      from_name, to_name, choice_type, created_at, posting_id,
@@ -392,9 +391,9 @@ class Sqlite3CompletionsStorage(BaseStorage):
         c.execute('''CREATE TABLE IF NOT EXISTS completions
             (task_id integer,
              task_data text,
-             completion_id text,
+             completion_id integer,
              result_id integer,
-             lead_time text,
+             lead_time integer,
              choice text,
              choice_id text,
              from_name text,
