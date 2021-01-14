@@ -88,10 +88,10 @@ class Sqlite3Storage(BaseStorage):
         conn.close()
         return data.items()
 
-    def remove(self, key):
+    def remove(self, id):
         conn = sqlite3.connect(self.path)
         c = conn.cursor()
-        c.execute('''DELETE FROM tasks where id=?''', (key,))
+        c.execute('''DELETE FROM tasks where id=?''', (id,))
         conn.commit()
         conn.close()
 
@@ -372,10 +372,10 @@ class Sqlite3CompletionsStorage(BaseStorage):
         conn.close()
         return data.items()
 
-    def remove(self, key):
+    def remove(self, id):
         conn = sqlite3.connect(self.path)
         c = conn.cursor()
-        c.execute('''DELETE FROM completions where task_id=?''', (key,))
+        c.execute('''DELETE FROM completions where task_id=?''', (id,))
         conn.commit()
         conn.close()
 
