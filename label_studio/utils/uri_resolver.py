@@ -46,7 +46,7 @@ def _get_uri_via_regex(data):
     uri_regex = r"[\s\'\"]?(?P<uri>(?P<storage>s3|gs)://([^/\s]+)/(.*?[^/\s]+/?[^\s\'\">]+))[\s\'\"]?"
     r_match = re.search(uri_regex, data)
     if r_match is None:
-        logger.warning("{data} does not match uri regex {uri_regex}".format(data=data, uri_regex=uri_regex))
+        # logger.warning("{data} does not match uri regex {uri_regex}".format(data=data, uri_regex=uri_regex))
         return
     return r_match.group("uri"), r_match.group("storage")
 

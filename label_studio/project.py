@@ -574,7 +574,8 @@ class Project(object):
         if data:
             logger.debug('Get predictions ' + str(task_id) + ' from source storage')
             # tasks can hold the newest version of predictions, so get it from tasks
-            data['predictions'] = self.source_storage.get(task_id, inplace=True, validate=False).get('predictions', [])
+            # data['predictions'] = self.source_storage.get(task_id, inplace=True, validate=False).get('predictions', [])
+            data['predictions'] = self.source_storage.get(task_id).get('predictions', [])
         return data
 
     def save_completion(self, task_id, completion):

@@ -296,7 +296,8 @@ def load_task(project, task_id, params, resolve_uri=False):
                 return {'id': task_id}
 
     target_task = project.target_storage.get(task_id)
-    source_task = project.source_storage.get(task_id, inplace=True, validate=False)
+    # source_task = project.source_storage.get(task_id, inplace=True, validate=False)
+    source_task = project.source_storage.get(task_id)
 
     if target_task is None:
         task = copy(source_task)
@@ -497,7 +498,7 @@ def check_filters_enabled(params):
     if not filters or not filters.get('items', None) or not filters.get('conjunction', None):
         return False
     return True
-    
+
 
 def filter_tasks(tasks, params):
     """ Filter tasks using
@@ -589,7 +590,7 @@ def prepare_tasks(project, params):
 
     points += [(time.time(), 'resolve')]
 
-    """ time profile: 
+    """ time profile:
     out = {}
     prev = 0
     for p in points:
